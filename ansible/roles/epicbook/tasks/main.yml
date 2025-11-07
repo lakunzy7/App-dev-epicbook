@@ -1,0 +1,112 @@
+---
+# ========================
+# EpicBook Deployment Tasks
+# ========================
+
+- name: Clone the EpicBook repository
+  git:
+    repo: "{{ app_repo }}"
+    dest: "{{ app_deploy_path }}"
+    version: main
+    force: yes
+  tags: [epicbook]
+
+- name: Ensure npm is in the PATH by sourcing profile
+  shell: . ~/.profile
+  args:
+    executable: /bin/bash
+  tags: [epicbook]
+
+- name: Install Node dependencies using npm
+  command: npm install --production
+  args:
+    chdir: "{{ app_deploy_path }}"
+  tags: [epicbook]
+
+- name: Create '.env' file for database connection
+  template:
+    src: env.j2
+    dest: "{{ app_deploy_path }}/.env"
+    mode: '0644'
+  notify: Restart epicbook app
+  tags: [epicbook]
+
+
+- name: Ensure MySQL client is installed
+  apt:
+    name: mysql-client
+    state: present
+    update_cache: yes
+  tags: [epicbook]
+
+# --- Database Reset and Import Tasks ---
+- name: Drop the bookstore database if exists
+  shell: |
+    mysql -h {{ db_host }} -P 3306 -u {{ db_user }} --ssl-mode=REQUIRED -p'{{ db_password }}' -e "DROP DATABASE IF EXISTS {{ db_name }};"
+  tags: [epicbook]
+
+- name: Create the bookstore database
+  shell: |
+    mysql -h {{ db_host }} -P 3306 -u {{ db_user }} --ssl-mode=REQUIRED -p'{{ db_password }}' -e "CREATE DATABASE {{ db_name }};"
+  tags: [epicbook]
+
+
+
+# --- Database Import Tasks ---
+
+- name: 1/3 - Run BuyTheBook_Schema.sql to create database structure
+  shell: |
+    mysql -h {{ db_host }} -P 3306 \
+          -u {{ db_user }} \
+          -p{{ db_password }} \
+          --ssl-mode=REQUIRED {{ db_name }} < {{ app_deploy_path }}/db/BuyTheBook_Schema.sql
+  args:
+    creates: "{{ app_deploy_path }}/db/.schema_imported"
+  tags: [epicbook]
+
+- name: 2/3 - Run author_seed.sql to import author data
+  shell: |
+    mysql -h {{ db_host }} -P 3306 \
+          -u {{ db_user }} \
+          -p{{ db_password }} \
+          --ssl-mode=REQUIRED {{ db_name }} < {{ app_deploy_path }}/db/author_seed.sql
+  tags: [epicbook]
+
+- name: 3/3 - Run books_seed.sql to import book data
+  shell: |
+    mysql -h {{ db_host }} -P 3306 \
+          -u {{ db_user }} \
+          -p{{ db_password }} \
+          --ssl-mode=REQUIRED {{ db_name }} < {{ app_deploy_path }}/db/books_seed.sql
+  tags: [epicbook]
+
+# --- Application Build/Run Tasks ---
+
+- name: Update config.json with correct MySQL credentials
+  template:
+    src: config.json.j2
+    dest: "{{ app_deploy_path }}/config/config.json"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  tags: [epicbook]
+
+# --- Start or Restart Node.js app using PM2 ---
+- name: Ensure Node.js app is running with PM2
+  shell: |
+    pm2 describe epicbook-app > /dev/null 2>&1 \
+    && pm2 restart epicbook-app --update-env \
+    || pm2 start server.js --name epicbook-app --cwd {{ app_deploy_path }} --update-env -- --port {{ app_internal_port }}
+  args:
+    chdir: "{{ app_deploy_path }}"
+  tags: [epicbook]
+
+- name: Save PM2 process list
+  shell: pm2 save
+  tags: [epicbook]
+
+
+
+
+
+

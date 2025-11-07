@@ -1,0 +1,37 @@
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+  tags: [nginx]
+
+- name: Copy Nginx reverse proxy configuration for EpicBook
+  template:
+    src: epicbook.conf.j2
+    dest: /etc/nginx/sites-available/epicbook
+    mode: '0644'
+  notify: Reload nginx
+  tags: [nginx]
+
+- name: Ensure default Nginx config is removed
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+  tags: [nginx]
+
+- name: Enable EpicBook site
+  file:
+    src: /etc/nginx/sites-available/epicbook
+    dest: /etc/nginx/sites-enabled/epicbook
+    state: link
+  notify: Reload nginx
+  tags: [nginx]
+
+- name: Ensure Nginx is running and enabled at boot
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+  tags: [nginx]
+

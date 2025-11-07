@@ -1,0 +1,11 @@
+# ========================
+# Handlers
+# ========================
+
+- name: Restart epicbook app
+  command: pm2 restart epicbook-app
+  tags: [epicbook]
+
+- name: Save PM2 process list
+  command: pm2 save
+  tags: [epicbook]

@@ -1,0 +1,78 @@
+---
+- name: Update and upgrade apt packages
+  apt:
+    update_cache: yes
+    upgrade: dist
+  tags: [common]
+
+- name: Install Git
+  apt:
+    name: git
+    state: present
+  tags: [common]
+
+- name: Check if Node.js is installed
+  command: node -v
+  register: node_version_check
+  ignore_errors: yes
+  tags: [common]
+
+- name: Set Node.js version fact
+  set_fact:
+    node_version_number: "{{ (node_version_check.stdout[1:] | default('0')) | int }}"
+  tags: [common]
+
+- name: Remove old Node.js and conflicting packages if version < 18
+  apt:
+    name:
+      - nodejs
+      - npm
+      - libnode-dev
+    state: absent
+    autoremove: yes
+  when: node_version_number | int < 18
+  tags: [common]
+
+- name: Ensure Node.js 18.x is installed (NodeSource)
+  shell: |
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+    apt-get install -y nodejs
+  args:
+    executable: /bin/bash
+  tags: [common]
+
+- name: Install PM2 globally
+  npm:
+    name: pm2
+    global: yes
+    state: present
+  tags: [common]
+
+- name: Verify Git version
+  command: git --version
+  register: git_version
+  tags: [common]
+
+- name: Verify Node.js version
+  command: node -v
+  register: node_version
+  tags: [common]
+
+- name: Verify npm version
+  command: npm -v
+  register: npm_version
+  tags: [common]
+
+- name: Verify PM2 version
+  command: pm2 -v
+  register: pm2_version
+  tags: [common]
+
+- name: Display all installed versions
+  debug:
+    msg:
+      - "Git version: {{ git_version.stdout }}"
+      - "Node.js version: {{ node_version.stdout }}"
+      - "npm version: {{ npm_version.stdout }}"
+      - "PM2 version: {{ pm2_version.stdout }}"
+  tags: [common]
