@@ -5,7 +5,7 @@ mysql_user: epicdbadmin
 mysql_password: MyPassword_123!
 mysql_database: bookstore
 
-db_host: epic-book-db-b5kae8.mysql.database.azure.com
+db_host: epic-book-db-kct0h4.mysql.database.azure.com
 db_port: 3306
 db_user: mysqladmin
 db_password: DevSecureDBPassword123!
@@ -15,4 +15,5 @@ db_name: bookstore
 # Application Details
 app_repo: https://github.com/pravinmishraaws/theepicbook
 app_deploy_path: /var/www/epicbook
+
 app_internal_port: 8080 # Node.js app listening port
