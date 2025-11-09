@@ -12,7 +12,7 @@ stages:
       - job: App_Deployment
         displayName: "Run Ansible Playbook to Deploy App"
         pool:
-          name: "self-hosted-agent-pool"
+          name: "Linux-hosted-agent"
 
         steps:
           - script: |
@@ -38,3 +38,4 @@ stages:
             displayName: "Run Ansible Playbook"
             env:
               ANSIBLE_HOST_KEY_CHECKING: "False"
+
